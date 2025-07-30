@@ -1,4 +1,4 @@
-# contact-use: Contact any person or organization
+# ✉️ contact-use: Contact any person or organization
 
 Need to contact someone in a hurry and cant figure out the best way?
 
