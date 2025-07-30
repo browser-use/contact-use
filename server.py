@@ -7,14 +7,14 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
 # Import browser-use
-import sys
-sys.path.append('/Users/squash/Local/Code/bu/browser-use')
-from browser_use import Agent, BrowserSession
+from browser_use import Agent
 from browser_use.browser.browser import Browser, BrowserConfig
+from browser_use.llm import ChatOpenAI, ChatAnthropic
 
 app = FastAPI(title="Contact-Use API")
 
@@ -87,27 +87,22 @@ async def run_browser_search(query_id: str):
         
         task = " ".join(task_parts)
         
-        # Create browser session
+        # Create browser
         user_data_dir = Path.home() / '.config' / 'browseruse' / 'profiles' / 'default'
-        session = BrowserSession(
-            user_data_dir=str(user_data_dir),
-            headless=False
-        )
-        
-        # Create browser and agent
         browser = Browser(
             config=BrowserConfig(
                 headless=False,
-                new_context_config={
-                    'storage_state': None,
-                    'user_data_dir': str(user_data_dir)
-                }
+                user_data_dir=str(user_data_dir)
             )
         )
         
+        # Get LLM from browser_use config
+        llm = get_llm()
+        
         agent = Agent(
             task=task,
-            browser=browser
+            browser=browser,
+            llm=llm
         )
         
         # Run the search
@@ -171,6 +166,15 @@ async def get_query(query_id: str):
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_frontend():
+    """Serve the frontend HTML"""
+    html_path = Path(__file__).parent / "index.html"
+    if html_path.exists():
+        return html_path.read_text()
+    else:
+        return "<h1>Frontend not found. Please ensure index.html is in the same directory as server.py</h1>"
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

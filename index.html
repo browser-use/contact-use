@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact-Use - Find Anyone By Any Means Necessary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script type="importmap">
+    {
+      "imports": {
+        "tsbro": "https://unpkg.com/tsbro",
+        "react": "https://esm.sh/react@18.2.0",
+        "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+        "react-dom": "https://esm.sh/react-dom@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client"
+      }
+    }
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+    
+    <script type="module">
+        import { register } from 'tsbro'
+        
+        register({
+            jsx: 'react',
+        })
+    </script>
+    
+    <script type="text/tsx">
+        import React, { useState, useEffect } from 'react'
+        import ReactDOM from 'react-dom/client'
+        
+        const API_BASE = 'http://localhost:8000'
+        
+        const FIELD_OPTIONS = [
+            { value: 'full_name', label: 'Full Name' },
+            { value: 'city', label: 'City' },
+            { value: 'company', label: 'Company' },
+            { value: 'job_title', label: 'Job Title' },
+            { value: 'email', label: 'Email' },
+            { value: 'company_phone_number', label: 'Company Phone Number' },
+            { value: 'contact_form_url', label: 'Contact Form URL' },
+            { value: 'profile_image_url', label: 'Profile Image URL' },
+            { value: 'cv_url', label: 'CV URL' },
+            { value: 'github_profile_url', label: 'GitHub Profile URL' },
+            { value: 'twitter_profile_url', label: 'Twitter Profile URL' },
+            { value: 'linkedin_profile_url', label: 'LinkedIn Profile URL' },
+        ]
+        
+        function App() {
+            const [keywords, setKeywords] = useState('')
+            const [organization, setOrganization] = useState('')
+            const [location, setLocation] = useState('')
+            const [role, setRole] = useState('')
+            const [selectedFields, setSelectedFields] = useState(new Set())
+            const [queries, setQueries] = useState([])
+            const [loading, setLoading] = useState(false)
+            
+            // Poll for query updates
+            useEffect(() => {
+                const fetchQueries = async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/api/queries`)
+                        const data = await response.json()
+                        setQueries(data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+                    } catch (error) {
+                        console.error('Failed to fetch queries:', error)
+                    }
+                }
+                
+                fetchQueries()
+                const interval = setInterval(fetchQueries, 2000)
+                return () => clearInterval(interval)
+            }, [])
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault()
+                
+                if (!keywords.trim()) {
+                    alert('Please enter search keywords')
+                    return
+                }
+                
+                if (selectedFields.size === 0) {
+                    alert('Please select at least one field to find')
+                    return
+                }
+                
+                setLoading(true)
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/search`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            keywords: keywords.trim(),
+                            organization: organization.trim() || null,
+                            location: location.trim() || null,
+                            role: role.trim() || null,
+                            fields_to_find: Array.from(selectedFields),
+                        }),
+                    })
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to create search')
+                    }
+                    
+                    // Clear form
+                    setKeywords('')
+                    setOrganization('')
+                    setLocation('')
+                    setRole('')
+                    setSelectedFields(new Set())
+                } catch (error) {
+                    console.error('Search error:', error)
+                    alert('Failed to start search. Make sure the backend is running.')
+                } finally {
+                    setLoading(false)
+                }
+            }
+            
+            const toggleField = (field) => {
+                const newSelected = new Set(selectedFields)
+                if (newSelected.has(field)) {
+                    newSelected.delete(field)
+                } else {
+                    newSelected.add(field)
+                }
+                setSelectedFields(newSelected)
+            }
+            
+            const formatDate = (dateString) => {
+                return new Date(dateString).toLocaleString()
+            }
+            
+            const getStatusColor = (status) => {
+                switch (status) {
+                    case 'pending': return 'text-yellow-600'
+                    case 'running': return 'text-blue-600'
+                    case 'completed': return 'text-green-600'
+                    case 'failed': return 'text-red-600'
+                    default: return 'text-gray-600'
+                }
+            }
+            
+            return (
+                <div className="min-h-screen p-4">
+                    <div className="max-w-6xl mx-auto">
+                        <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">
+                            Contact-Use
+                        </h1>
+                        <p className="text-center text-gray-600 mb-8">
+                            Find anyone by any means necessary
+                        </p>
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Search Form */}
+                            <div className="bg-white p-6 rounded-lg shadow-md">
+                                <h2 className="text-xl font-semibold mb-4">New Search</h2>
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Search Keywords *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={keywords}
+                                            onChange={(e) => setKeywords(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., John Doe, Software Engineer"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Organization (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={organization}
+                                            onChange={(e) => setOrganization(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., Google, Microsoft"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Location (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={location}
+                                            onChange={(e) => setLocation(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., San Francisco, CA"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Role/Job Title (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={role}
+                                            onChange={(e) => setRole(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., CTO, Senior Developer"
+                                        />
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            What to Find *
+                                        </label>
+                                        <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 rounded-md p-3">
+                                            {FIELD_OPTIONS.map(({ value, label }) => (
+                                                <label key={value} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedFields.has(value)}
+                                                        onChange={() => toggleField(value)}
+                                                        className="mr-2"
+                                                    />
+                                                    <span className="text-sm">{label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                                    >
+                                        {loading ? 'Starting Search...' : 'Start Search'}
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            {/* Results */}
+                            <div className="bg-white p-6 rounded-lg shadow-md">
+                                <h2 className="text-xl font-semibold mb-4">Search Results</h2>
+                                <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                                    {queries.length === 0 ? (
+                                        <p className="text-gray-500 text-center py-8">No searches yet</p>
+                                    ) : (
+                                        queries.map((query) => (
+                                            <div key={query.id} className="border border-gray-200 rounded-lg p-4">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex-1">
+                                                        <p className="font-medium">{query.request.keywords}</p>
+                                                        <p className="text-sm text-gray-500">
+                                                            {formatDate(query.created_at)}
+                                                        </p>
+                                                    </div>
+                                                    <span className={`text-sm font-medium ${getStatusColor(query.status)}`}>
+                                                        {query.status.charAt(0).toUpperCase() + query.status.slice(1)}
+                                                    </span>
+                                                </div>
+                                                
+                                                {query.request.organization && (
+                                                    <p className="text-sm text-gray-600">
+                                                        <span className="font-medium">Org:</span> {query.request.organization}
+                                                    </p>
+                                                )}
+                                                
+                                                {query.status === 'running' && (
+                                                    <div className="mt-2">
+                                                        <div className="flex items-center">
+                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                                            <span className="ml-2 text-sm text-gray-600">Searching...</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {query.status === 'completed' && query.result && (
+                                                    <div className="mt-3 space-y-1">
+                                                        {Object.entries(query.result).map(([key, value]) => 
+                                                            value && (
+                                                                <p key={key} className="text-sm">
+                                                                    <span className="font-medium text-gray-700">
+                                                                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
+                                                                    </span>{' '}
+                                                                    <span className="text-gray-600">{value}</span>
+                                                                </p>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                )}
+                                                
+                                                {query.status === 'failed' && query.error && (
+                                                    <p className="mt-2 text-sm text-red-600">
+                                                        Error: {query.error}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'))
+        root.render(<App />)
+    </script>
+</body>
+</html>
