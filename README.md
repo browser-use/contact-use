@@ -1,6 +1,6 @@
 # ✉️ contact-use: Contact any person or organization
 
-Need to contact someone in a hurry and cant figure out the best way?
+Need to contact someone in a hurry and can't figure out the best way?
 
 Use browser-use's LLM-powered browser agent to find the best way to reach them.
 
